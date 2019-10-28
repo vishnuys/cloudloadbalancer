@@ -19,5 +19,7 @@ from loader import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.DefaultView.as_view()),
+    path('status/', views.StatusChecker.as_view()),
     path('create/bucket/', views.CreateBucket.as_view()),
 ]
