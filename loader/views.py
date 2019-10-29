@@ -1,8 +1,10 @@
 import os
 import requests
+from uhashring import HashRing
 from traceback import format_exc
+from .helper import status_check
 from django.shortcuts import render
-from clouder.settings import NODE_LIST
+from clouder.settings import NODE_LIST, NODE_ADDRESS
 from django.views.generic import TemplateView
 from django.http import HttpResponse, JsonResponse
 from django.utils.decorators import method_decorator
@@ -20,25 +22,38 @@ class DefaultView(TemplateView):
 class CreateBucket(TemplateView):
 
 	def post(self, request):
-		return HttpResponse("Request Recieved")
+		name = request.POST.get('name')
+		hr = HashRing(nodes=NODE_LIST)
+		print(hr, type(hr))
+		node = hr.get_node(name)
+		addr = os.path.join(NODE_ADDRESS[node], 'createbucket/')
+		print(node)
+		data = {'name': name}
+		r = requests.post(addr, data=data)
+		print(r.status_code)
+		replication_count = r.json['count']+1
+		if r.ok and replication_count >= 2:
+			result = {
+				'status': 'success',
+				'node': node,
+				'vector_clocks': {}
+			}
+			return JsonResponse(result)
+		elif r.ok and replication_count < 2:
+			result = {
+				'status': 'failure to write in majority nodes',
+				'node': node,
+				'vector_clocks': {}
+			}
+			return JsonResponse(result)
+		else:
+			return HttpResponse("failed", status=500)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StatusChecker(TemplateView):
 
 	def post(self, request):
-		result = {}
-		for i in NODE_LIST:
-			try:
-				addr = os.path.join(i['address'], 'status/')
-				r = requests.get(addr)
-				if r.ok:
-					result[i['name']] = 'Live'
-				else:
-					result[i['name']] = 'Down'
-
-			except Exception:
-				print(format_exc())
-				result[i['name']] = 'Down'
+		result = status_check()
 		return JsonResponse(result)
 		
