@@ -23,4 +23,5 @@ urlpatterns = [
     path('status/', views.StatusChecker.as_view()),
     path('create/bucket/', views.CreateBucket.as_view()),
     path('delete/bucket/', views.DeleteBucket.as_view()),
+    path('create/file/', views.CreateFile.as_view()),
 ]
