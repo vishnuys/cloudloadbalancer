@@ -36,6 +36,8 @@ class CreateBucket(TemplateView):
 		r = requests.post(addr, data=data)
 		print(r.status_code)
 		replication_count = r.json()['count']
+		node_result = r.json()['result']
+		print('result=%s count=%d' % (node_result, replication_count))
 		if r.ok and replication_count >= REPLICATION_FACTOR:
 			result = {
 				'status': 'success',
@@ -43,6 +45,8 @@ class CreateBucket(TemplateView):
 				'vector_clocks': {}
 			}
 			return JsonResponse(result)
+		elif r.ok and replication_count == 0:
+			return HttpResponseBadRequest(node_result)
 		elif r.ok and replication_count < REPLICATION_FACTOR:
 			result = {
 				'status': 'failure to write in majority nodes',
@@ -70,6 +74,8 @@ class DeleteBucket(TemplateView):
 		r = requests.post(addr, data=data)
 		print(r.status_code)
 		replication_count = r.json()['count']
+		node_result = r.json()['result']
+		print('result=%s count=%d' % (node_result, replication_count))
 		if r.ok and replication_count >= REPLICATION_FACTOR:
 			result = {
 				'status': 'success',
@@ -77,6 +83,8 @@ class DeleteBucket(TemplateView):
 				'vector_clocks': {}
 			}
 			return JsonResponse(result)
+		elif r.ok and replication_count == 0:
+			return HttpResponseBadRequest(node_result)
 		elif r.ok and replication_count < REPLICATION_FACTOR:
 			result = {
 				'status': 'failure to write in majority nodes',
