@@ -47,6 +47,8 @@ def handle_result(req, node):
                 'status': 'success',
                 'node': node,
             }
+            if 'vector_clocks' in res:
+                result['vector_clocks'] = res['vector_clocks']
             response = "SUCCESS"
             return result, response
         elif replication_count == 0:
