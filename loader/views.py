@@ -36,14 +36,14 @@ class CreateBucket(TemplateView):
 		r = requests.post(addr, data=data)
 		print("HTTP STATUS CODE = %d" % r.status_code)
 		if r.ok:
-			replication_count = r.json()['count']
-			node_result = r.json()['result']
+			res = r.json()
+			replication_count = res['count']
+			node_result = res['result']
 			print('result=%s count=%d' % (node_result, replication_count))
 			if replication_count >= REPLICATION_FACTOR:
 				result = {
 					'status': 'success',
 					'node': node,
-					'vector_clocks': {}
 				}
 				return JsonResponse(result)
 			elif replication_count == 0:
@@ -52,7 +52,6 @@ class CreateBucket(TemplateView):
 				result = {
 					'status': 'failure to write in majority nodes',
 					'node': node,
-					'vector_clocks': {}
 				}
 				return JsonResponse(result)
 		else:
@@ -75,14 +74,14 @@ class DeleteBucket(TemplateView):
 		r = requests.post(addr, data=data)
 		print("HTTP STATUS CODE = %d" % r.status_code)
 		if r.ok:
-			replication_count = r.json()['count']
-			node_result = r.json()['result']
+			res = r.json()
+			replication_count = res['count']
+			node_result = res['result']
 			print('result=%s count=%d' % (node_result, replication_count))
 			if replication_count >= REPLICATION_FACTOR:
 				result = {
 					'status': 'success',
 					'node': node,
-					'vector_clocks': {}
 				}
 				return JsonResponse(result)
 			elif replication_count == 0:
@@ -91,7 +90,6 @@ class DeleteBucket(TemplateView):
 				result = {
 					'status': 'failure to write in majority nodes',
 					'node': node,
-					'vector_clocks': {}
 				}
 				return JsonResponse(result)
 		else:
@@ -131,14 +129,16 @@ class CreateFile(TemplateView):
 		r = requests.post(addr, data=data, files=filedata)
 		print("HTTP STATUS CODE = %d" % r.status_code)
 		if r.ok:
-			replication_count = r.json()['count']
-			node_result = r.json()['result']
+			res = r.json()
+			replication_count = res['count']
+			node_result = res['result']
+			vector_clocks = res['vector_clocks']
 			print('result=%s count=%d' % (node_result, replication_count))
 			if replication_count >= REPLICATION_FACTOR:
 				result = {
 					'status': 'success',
 					'node': node,
-					'vector_clocks': {}
+					'vector_clocks': vector_clocks
 				}
 				return JsonResponse(result)
 			elif replication_count == 0:
@@ -147,7 +147,7 @@ class CreateFile(TemplateView):
 				result = {
 					'status': 'failure to write in majority nodes',
 					'node': node,
-					'vector_clocks': {}
+					'vector_clocks': vector_clocks
 				}
 				return JsonResponse(result)
 		else:
@@ -156,6 +156,55 @@ class CreateFile(TemplateView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DeleteFile(TemplateView):
+
+	def post(self, request):
+		try:
+			name = request.POST['name']
+			bucket = request.POST['bucket']
+			file = request.FILES['file']
+		except MultiValueDictKeyError:
+			return HttpResponseBadRequest('Please enter valid name, bucket and select a valid file to upload')
+		if name == '' or bucket == '':
+			return HttpResponseBadRequest('Please enter valid name, bucket and select a valid file to upload')
+
+		node_status = status_check()
+		alive_nodes = [x for x in NODE_LIST if node_status[x]=='Live']
+		hr = HashRing(nodes=alive_nodes)
+		print(hr, type(hr))
+		node = hr.get_node(name)
+		addr = os.path.join(NODE_ADDRESS[node], 'updatefile/')
+		print(node)
+		data = {'name': name, 'bucket': bucket}
+		r = requests.post(addr, data=data)
+		print("HTTP STATUS CODE = %d" % r.status_code)
+		if r.ok:
+			res = r.json()
+			replication_count = res['count']
+			node_result = res['result']
+			vector_clocks = res['vector_clocks']
+			print('result=%s count=%d' % (node_result, replication_count))
+			if replication_count >= REPLICATION_FACTOR:
+				result = {
+					'status': 'success',
+					'node': node,
+					'vector_clocks': vector_clocks
+				}
+				return JsonResponse(result)
+			elif replication_count == 0:
+				return HttpResponseBadRequest(node_result)
+			elif replication_count < REPLICATION_FACTOR:
+				result = {
+					'status': 'failure to write in majority nodes',
+					'node': node,
+					'vector_clocks': vector_clocks
+				}
+				return JsonResponse(result)
+		else:
+			return HttpResponseServerError("Something went wrong")
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UpdateFile(TemplateView):
 
 	def post(self, request):
 		try:
@@ -177,14 +226,16 @@ class DeleteFile(TemplateView):
 		r = requests.post(addr, data=data)
 		print("HTTP STATUS CODE = %d" % r.status_code)
 		if r.ok:
-			replication_count = r.json()['count']
-			node_result = r.json()['result']
+			res = r.json()
+			replication_count = res['count']
+			node_result = res['result']
+			vector_clocks = res['vector_clocks']
 			print('result=%s count=%d' % (node_result, replication_count))
 			if replication_count >= REPLICATION_FACTOR:
 				result = {
 					'status': 'success',
 					'node': node,
-					'vector_clocks': {}
+					'vector_clocks': vector_clocks
 				}
 				return JsonResponse(result)
 			elif replication_count == 0:
@@ -193,7 +244,7 @@ class DeleteFile(TemplateView):
 				result = {
 					'status': 'failure to write in majority nodes',
 					'node': node,
-					'vector_clocks': {}
+					'vector_clocks': vector_clocks
 				}
 				return JsonResponse(result)
 		else:
