@@ -136,7 +136,7 @@ class UpdateFile(TemplateView):
         filedata = {'file': file}
         addr = os.path.join(NODE_ADDRESS[node], 'updatefile/')
         r = requests.post(addr, data=data, files=filedata)
-        result, response = handle_result(r)
+        result, response = handle_result(r, node)
         if response == 'SUCCESS':
             return JsonResponse(result)
         elif response == 'BAD_REQUEST':
