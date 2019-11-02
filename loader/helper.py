@@ -47,7 +47,7 @@ def handle_result(req, node):
                 'status': 'success',
                 'node': node,
             }
-            if 'vector_clocks' in res:
+            if 'vector_clocks' in res and len(res['vector_clocks'].keys()) > 0:
                 result['vector_clocks'] = res['vector_clocks']
             response = "SUCCESS"
             return result, response
