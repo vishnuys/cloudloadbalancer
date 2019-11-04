@@ -10,8 +10,8 @@ Implementation of the characterstics of [Amazon Dynamo Paper](https://www.allthi
 1) Create a virtualenv `LoadBalancer` and activate it. If you do not have virtualenv installed, install it. (Installation: [Windows](https://thinkdiff.net/python/how-to-install-python-virtualenv-in-windows/), [Linux & MAC OS](https://medium.com/@garimajdamani/https-medium-com-garimajdamani-installing-virtualenv-on-ubuntu-16-04-108c366e4430))
 2) Clone the Load Balancer repo into the desired directory.
 3) In the project home folder, Install the necessary packages using the command `pip install -r requirements` .
-4) Create `config.py` in `clouder` folder.
-5) Add the following code to `config.py`
+4) Create `conf.py` in `clouder` folder.
+5) Add the following code to `conf.py`
     ```python
     NODE_LIST = [<List of the Storage Nodes>]
     NODE_ADDRESS = {<Each node in NODE_LIST as key and its corresponding address as its value>}
