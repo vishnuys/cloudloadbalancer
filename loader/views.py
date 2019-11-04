@@ -1,14 +1,17 @@
 import os
 import requests
-from .helper import status_check, node_to_contact, handle_result
-from django.shortcuts import render
+import mimetypes
+from uuid import uuid4
 from IPython import embed
+from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from clouder.settings import NODE_ADDRESS, ARCHIVE_DIR
 from django.utils.datastructures import MultiValueDictKeyError
-from clouder.settings import NODE_ADDRESS
-from django.http import JsonResponse, HttpResponseServerError, HttpResponseBadRequest
+from .helper import status_check, node_to_contact, handle_result
+from django.http import HttpResponse, JsonResponse, HttpResponseServerError, \
+    HttpResponseBadRequest, HttpResponseNotFound
 
 
 # Create your views here.
@@ -143,3 +146,53 @@ class UpdateFile(TemplateView):
             return HttpResponseBadRequest(result)
         elif response == 'SERVER_ERROR':
             return HttpResponseServerError(result)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ReadFile(TemplateView):
+
+    def post(self, request):
+        try:
+            name = request.POST['name'].strip()
+            bucket = request.POST['bucket'].strip()
+        except MultiValueDictKeyError:
+            return HttpResponseBadRequest('Please enter valid name and bucket')
+        if name == '' or bucket == '':
+            return HttpResponseBadRequest('Please enter valid name and bucket')
+
+        data = {'name': name, 'bucket': bucket}
+        vectors = {}
+        vectorlist = []
+        for node in NODE_ADDRESS:
+            addr = os.path.join(NODE_ADDRESS[node], 'getvector/')
+            r = requests.post(addr, data=data)
+            nodevector = r.json()['vector']
+            vectors[node] = nodevector
+            vectorlist.append(nodevector)
+        if len(set(vectorlist)) == 1:
+            print('All nodes are consistent')
+            node = node_to_contact(name)
+            addr = os.path.join(NODE_ADDRESS[node], 'file', bucket, name)
+            r = requests.get(addr)
+            fpath = os.path.join(ARCHIVE_DIR, name)
+            with open(fpath, 'wb') as fp:
+                fp.write(r.content)
+            result = '/file/%s' % name
+            return HttpResponse(result)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class FileDownload(TemplateView):
+
+    def get(self, request, name):
+        print(name)
+        filepath = os.path.join(ARCHIVE_DIR, name)
+        if not os.path.exists(filepath):
+            print('NOT FOUND')
+            return HttpResponseNotFound('File not found')
+        mimetype = mimetypes.MimeTypes().guess_type(filepath)[0]
+        response = HttpResponse()
+        response['X-Sendfile'] = filepath
+        response['Content-Type'] = mimetype
+        response['Content-Disposition'] = 'attachment; filename=%s' % name
+        return response

@@ -26,4 +26,6 @@ urlpatterns = [
     path('create/file/', views.CreateFile.as_view()),
     path('delete/file/', views.DeleteFile.as_view()),
     path('update/file/', views.UpdateFile.as_view()),
+    path('read/file/', views.ReadFile.as_view()),
+    path('file/<name>', views.FileDownload.as_view()),
 ]
