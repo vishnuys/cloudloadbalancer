@@ -1,8 +1,8 @@
 import os
 import requests
 import mimetypes
-from uuid import uuid4
 from IPython import embed
+from traceback import format_exc
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
@@ -163,12 +163,15 @@ class ReadFile(TemplateView):
         data = {'name': name, 'bucket': bucket}
         vectors = {}
         vectorlist = []
+        vector_result = []
         for node in NODE_ADDRESS:
             addr = os.path.join(NODE_ADDRESS[node], 'getvector/')
             r = requests.post(addr, data=data)
-            nodevector = r.json()['vector']
+            resp = r.json()
+            nodevector = int(resp['vector'])
             vectors[node] = nodevector
             vectorlist.append(nodevector)
+            vector_result.append(resp)
         if len(set(vectorlist)) == 1:
             print('All nodes are consistent')
             node = node_to_contact(name)
@@ -177,8 +180,33 @@ class ReadFile(TemplateView):
             fpath = os.path.join(ARCHIVE_DIR, name)
             with open(fpath, 'wb') as fp:
                 fp.write(r.content)
-            result = '/file/%s' % name
-            return HttpResponse(result)
+        else:
+            print('Inconsistent nodes found, Reconciling...')
+            latest = max(vectorlist)
+            latestnode = [x for x in vector_result if x['vector'] == latest][0]
+            node = latestnode['node']
+            addr = os.path.join(NODE_ADDRESS[node], 'file', bucket, name)
+            r = requests.get(addr)
+            fpath = os.path.join(ARCHIVE_DIR, name)
+            with open(fpath, 'wb') as fp:
+                fp.write(r.content)
+            fp = open(fpath, 'rb')
+            filedata = {'file': fp}
+            data = {'name': name, 'bucket': bucket, 'vector': latest, 'timestamp': latestnode['timestamp']}
+            for node in vectors:
+                if vectors[node] < latest:
+                    addr = os.path.join(NODE_ADDRESS[node], 'reconciliation/')
+                    try:
+                        r = requests.post(addr, data=data, files=filedata)
+                        if r.ok:
+                            print('Reconciliation Successful with %s' % node)
+                    except requests.exceptions.RequestException:
+                        print('%s is down, could not reconcile' % node)
+                    except Exception:
+                        print(format_exc())
+            fp.close()
+        result = '/file/%s' % name
+        return HttpResponse(result)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
