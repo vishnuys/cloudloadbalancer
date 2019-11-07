@@ -28,4 +28,5 @@ urlpatterns = [
     path('update/file/', views.UpdateFile.as_view()),
     path('read/file/', views.ReadFile.as_view()),
     path('file/<name>', views.FileDownload.as_view()),
+    path('gossip/',views.RecieveGossip.as_view())
 ]

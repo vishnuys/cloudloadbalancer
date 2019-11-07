@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import mimetypes
 from IPython import embed
@@ -9,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from clouder.settings import NODE_ADDRESS, ARCHIVE_DIR
 from django.utils.datastructures import MultiValueDictKeyError
-from .helper import status_check, node_to_contact, handle_result
+from .helper import status_check, status_checker, node_to_contact, handle_result, reconcile_gossip
 from django.http import HttpResponse, JsonResponse, HttpResponseServerError, \
     HttpResponseBadRequest, HttpResponseNotFound
 
@@ -65,9 +66,19 @@ class DeleteBucket(TemplateView):
 class StatusChecker(TemplateView):
 
     def post(self, request):
-        result = status_check()
+        #result = status_check()
+        result = status_checker()
         return JsonResponse(result)
 
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RecieveGossip(TemplateView):
+    
+    def post(self, request):
+        gossip_list = json.loads(request.POST.get('gossiplist'))
+        print (gossip_list)
+        reconcile_gossip(gossip_list)
+        return HttpResponse('OK')
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CreateFile(TemplateView):

@@ -124,3 +124,52 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 from .conf import *
+import json
+import datetime
+from threading import Timer
+
+
+t_fail = 10.0
+
+GOSSIP_LIST = []
+for node in NODE_ADDRESS.keys():
+    GOSSIP_LIST.append({'name':node, 'address':NODE_ADDRESS[node], 'HB': 0, 'last_modified': datetime.datetime.now().timestamp()})
+
+with open(BASE_DIR + '/gossip_list.json','w+') as f:
+    json.dump(GOSSIP_LIST, f)
+
+NODE_STATUS = {}
+for node in NODE_ADDRESS.keys():
+    NODE_STATUS[node] = 'Down'
+
+with open(BASE_DIR + '/node_status.json','w+') as f:
+    json.dump(NODE_STATUS, f)
+
+
+last_gossip_list = []
+with open(BASE_DIR + '/gossip_list.json', 'r') as f:
+    last_gossip_list = json.load(f)
+
+def fail_check_callback():
+    global last_gossip_list
+    Timer(t_fail, fail_check_callback).start()
+    with open(BASE_DIR + '/gossip_list.json', 'r') as f:
+        current_gossip_list = json.load(f)
+    node_status = {}
+    with open(BASE_DIR + '/node_status.json','r+') as f:
+        node_status = json.load(f)
+        for idx, x in enumerate(last_gossip_list):
+            if x['HB'] == current_gossip_list[idx]['HB']:
+                node_status[x['name']] = 'Down'
+            else:
+                node_status[x['name']] = 'Live'
+    with open(BASE_DIR + '/node_status.json','w+') as f:
+        json.dump(node_status, f)
+
+Timer(t_fail, fail_check_callback).start()
+                
+                
+
+
+
+

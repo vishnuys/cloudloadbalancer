@@ -1,9 +1,10 @@
 import os
+import json
 import requests
 from uhashring import HashRing
 from traceback import format_exc
 from mmh3 import hash as mmh
-from clouder.settings import NODE_LIST, NODE_ADDRESS, REPLICATION_FACTOR
+from clouder.settings import NODE_LIST, NODE_ADDRESS, REPLICATION_FACTOR, BASE_DIR
 
 
 def status_check():
@@ -23,6 +24,26 @@ def status_check():
             print(format_exc())
             result[i] = 'Down'
     return result
+
+def status_checker():
+    status = {}
+    with open(BASE_DIR + '/node_status.json','r') as f:
+        status = json.load(f)
+    return status
+        
+
+def reconcile_gossip(recieved_list):
+    with open(BASE_DIR + '/gossip_list.json','r') as f:
+        GOSSIP_LIST = json.load(f)
+        for s in GOSSIP_LIST:
+            for r in recieved_list:
+                if s['name'] == r['name']:
+                    s['HB'] = max(s['HB'], r['HB'])
+                    s['last_modified'] = max(s['last_modified'], r['last_modified'])
+                    break
+    with open(BASE_DIR + '/gossip_list.json','w+') as f:
+        json.dump(GOSSIP_LIST,f)
+
 
 
 def node_to_contact(name):
